@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["mpmc_queue","Creates a new MPMC queue"]],"struct":[["MPMCConsumer","Consumer end of the queue. Implements the trait `Consumer<T>`."],["MPMCProducer","Producer end of the queue. Implements the trait `Producer<T>`."]]});

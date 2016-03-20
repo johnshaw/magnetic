@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["DynamicBuffer","Holds data allocated from the heap at run time"],["DynamicBufferP2","Holds data allocated from the heap at run time. Similar to `DynamicBuffer` except that the size must be a power of two. This will result in slightly faster runtime performance due to the use of a mask instead of modulus when computing buffer indexes."]]});

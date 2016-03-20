@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["spmc_queue","Creates a new SPMC queue"]],"struct":[["SPMCConsumer","Consumer end of the queue. Implements the trait `Consumer<T>`."],["SPMCProducer","Producer end of the queue. Implements the trait `Producer<T>`."]]});
