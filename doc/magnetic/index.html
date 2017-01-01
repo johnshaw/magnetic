@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" type="text/css" href="../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../main.css">
+    
 
     
     
@@ -43,14 +44,15 @@
 
     <section id='main' class="content mod">
 <h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>magnetic</a></span><span class='out-of-band'><span id='render-detail'>
-            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
-                [<span class='inner'>&#x2212;</span>]
-            </a>
-        </span><a id='src-0' class='srclink' href='../src/magnetic/lib.rs.html#1-78' title='goto source code'>[src]</a></span></h1>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-0' class='srclink' href='../src/magnetic/src/lib.rs.html#1-112' title='goto source code'>[src]</a></span></h1>
 <div class='docblock'><p>Magnetic contains a set of high-performance queues useful for developing
 low-latency applications. All queues are FIFO unless otherwise specified.</p>
 
-<h1 id='examples' class='section-header'><a href='#examples'>Examples</a></h1><pre class='rust rust-example-rendered'>
+<h1 id='examples' class='section-header'><a href='#examples'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>thread</span>::<span class='ident'>spawn</span>;
 <span class='kw'>use</span> <span class='ident'>magnetic</span>::<span class='ident'>spsc</span>::<span class='ident'>spsc_queue</span>;
 <span class='kw'>use</span> <span class='ident'>magnetic</span>::<span class='ident'>buffer</span>::<span class='ident'>dynamic</span>::<span class='ident'>DynamicBuffer</span>;
@@ -59,21 +61,22 @@ low-latency applications. All queues are FIFO unless otherwise specified.</p>
 <span class='kw'>let</span> (<span class='ident'>p</span>, <span class='ident'>c</span>) <span class='op'>=</span> <span class='ident'>spsc_queue</span>(<span class='ident'>DynamicBuffer</span>::<span class='ident'>new</span>(<span class='number'>32</span>).<span class='ident'>unwrap</span>());
 
 <span class='comment'>// Push and pop within a single thread</span>
-<span class='ident'>p</span>.<span class='ident'>push</span>(<span class='number'>1</span>);
-<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>c</span>.<span class='ident'>pop</span>(), <span class='number'>1</span>);
+<span class='ident'>p</span>.<span class='ident'>push</span>(<span class='number'>1</span>).<span class='ident'>unwrap</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>c</span>.<span class='ident'>pop</span>(), <span class='prelude-val'>Ok</span>(<span class='number'>1</span>));
 
 <span class='comment'>// Push and pop from multiple threads. Since this example is using the</span>
 <span class='comment'>// SPSC queue, only one producer and one consumer are allowed.</span>
 <span class='kw'>let</span> <span class='ident'>t1</span> <span class='op'>=</span> <span class='ident'>spawn</span>(<span class='kw'>move</span> <span class='op'>||</span> {
     <span class='kw'>for</span> <span class='ident'>i</span> <span class='kw'>in</span> <span class='number'>0</span>..<span class='number'>10</span> {
         <span class='macro'>println</span><span class='macro'>!</span>(<span class='string'>&quot;Producing {}&quot;</span>, <span class='ident'>i</span>);
-        <span class='ident'>p</span>.<span class='ident'>push</span>(<span class='ident'>i</span>);
+        <span class='ident'>p</span>.<span class='ident'>push</span>(<span class='ident'>i</span>).<span class='ident'>unwrap</span>();
     }
+    <span class='ident'>p</span>
 });
 
 <span class='kw'>let</span> <span class='ident'>t2</span> <span class='op'>=</span> <span class='ident'>spawn</span>(<span class='kw'>move</span> <span class='op'>||</span> {
     <span class='kw'>loop</span> {
-        <span class='kw'>let</span> <span class='ident'>i</span> <span class='op'>=</span> <span class='ident'>c</span>.<span class='ident'>pop</span>();
+        <span class='kw'>let</span> <span class='ident'>i</span> <span class='op'>=</span> <span class='ident'>c</span>.<span class='ident'>pop</span>().<span class='ident'>unwrap</span>();
         <span class='macro'>println</span><span class='macro'>!</span>(<span class='string'>&quot;Consumed {}&quot;</span>, <span class='ident'>i</span>);
         <span class='kw'>if</span> <span class='ident'>i</span> <span class='op'>==</span> <span class='number'>9</span> { <span class='kw'>break</span>; }
     }
@@ -83,72 +86,87 @@ low-latency applications. All queues are FIFO unless otherwise specified.</p>
 <span class='ident'>t2</span>.<span class='ident'>join</span>().<span class='ident'>unwrap</span>();</pre>
 </div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
 <table>
-                    <tr class=' module-item'>
-                        <td><a class='mod' href='buffer/index.html'
-                               title='magnetic::buffer'>buffer</a></td>
-                        <td class='docblock short'>
-                             <p>Memory buffer API</p>
-
-                        </td>
-                    </tr>
-                
-                    <tr class=' module-item'>
-                        <td><a class='mod' href='mpmc/index.html'
-                               title='magnetic::mpmc'>mpmc</a></td>
-                        <td class='docblock short'>
-                             <p>Multiple-producer multiple-consumer queue</p>
-
-                        </td>
-                    </tr>
-                
-                    <tr class=' module-item'>
-                        <td><a class='mod' href='mpsc/index.html'
-                               title='magnetic::mpsc'>mpsc</a></td>
-                        <td class='docblock short'>
-                             <p>Multiple-producer single-consumer queue</p>
-
-                        </td>
-                    </tr>
-                
-                    <tr class=' module-item'>
-                        <td><a class='mod' href='spmc/index.html'
-                               title='magnetic::spmc'>spmc</a></td>
-                        <td class='docblock short'>
-                             <p>Single-producer multiple-consumer queue</p>
-
-                        </td>
-                    </tr>
-                
-                    <tr class=' module-item'>
-                        <td><a class='mod' href='spsc/index.html'
-                               title='magnetic::spsc'>spsc</a></td>
-                        <td class='docblock short'>
-                             <p>Single-producer single-consumer queue</p>
-
-                        </td>
-                    </tr>
-                </table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+                       <tr class=' module-item'>
+                           <td><a class='mod' href='buffer/index.html'
+                                  title='magnetic::buffer'>buffer</a></td>
+                           <td class='docblock-short'>
+                                <p>Memory buffer API</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='mod' href='mpmc/index.html'
+                                  title='magnetic::mpmc'>mpmc</a></td>
+                           <td class='docblock-short'>
+                                <p>Multiple-producer multiple-consumer queue</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='mod' href='mpsc/index.html'
+                                  title='magnetic::mpsc'>mpsc</a></td>
+                           <td class='docblock-short'>
+                                <p>Multiple-producer single-consumer queue</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='mod' href='spmc/index.html'
+                                  title='magnetic::spmc'>spmc</a></td>
+                           <td class='docblock-short'>
+                                <p>Single-producer multiple-consumer queue</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='mod' href='spsc/index.html'
+                                  title='magnetic::spsc'>spsc</a></td>
+                           <td class='docblock-short'>
+                                <p>Single-producer single-consumer queue</p>
+                           </td>
+                       </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
 <table>
-                    <tr class=' module-item'>
-                        <td><a class='trait' href='trait.Consumer.html'
-                               title='magnetic::Consumer'>Consumer</a></td>
-                        <td class='docblock short'>
-                             <p>The consumer end of the queue allows for receiving data. <code>Consumer&lt;T&gt;</code> is
+                       <tr class=' module-item'>
+                           <td><a class='enum' href='enum.PopError.html'
+                                  title='magnetic::PopError'>PopError</a></td>
+                           <td class='docblock-short'>
+                                <p>Possible errors for <code>Consumer::pop</code></p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='enum' href='enum.PushError.html'
+                                  title='magnetic::PushError'>PushError</a></td>
+                           <td class='docblock-short'>
+                                <p>Possible errors for <code>Producer::push</code></p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='enum' href='enum.TryPopError.html'
+                                  title='magnetic::TryPopError'>TryPopError</a></td>
+                           <td class='docblock-short'>
+                                <p>Possible errors for <code>Consumer::try_pop</code></p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='enum' href='enum.TryPushError.html'
+                                  title='magnetic::TryPushError'>TryPushError</a></td>
+                           <td class='docblock-short'>
+                                <p>Possible errors for <code>Producer::try_push</code></p>
+                           </td>
+                       </tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='trait' href='trait.Consumer.html'
+                                  title='magnetic::Consumer'>Consumer</a></td>
+                           <td class='docblock-short'>
+                                <p>The consumer end of the queue allows for receiving data. <code>Consumer&lt;T&gt;</code> is
 always <code>Send</code>, but is only <code>Sync</code> for multi-consumer (SPMC, MPMC) queues.</p>
-
-                        </td>
-                    </tr>
-                
-                    <tr class=' module-item'>
-                        <td><a class='trait' href='trait.Producer.html'
-                               title='magnetic::Producer'>Producer</a></td>
-                        <td class='docblock short'>
-                             <p>The consumer end of the queue allows for sending data. <code>Producer&lt;T&gt;</code> is
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='trait' href='trait.Producer.html'
+                                  title='magnetic::Producer'>Producer</a></td>
+                           <td class='docblock-short'>
+                                <p>The consumer end of the queue allows for sending data. <code>Producer&lt;T&gt;</code> is
 always <code>Send</code>, but is only <code>Sync</code> for multi-producer (MPSC, MPMC) queues.</p>
-
-                        </td>
-                    </tr>
-                </table></section>
+                           </td>
+                       </tr></table></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
@@ -171,6 +189,8 @@ always <code>Send</code>, but is only <code>Sync</code> for multi-producer (MPSC
                     <dd>Move down in search results</dd>
                     <dt>&#9166;</dt>
                     <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
                 </dl>
             </div>
 
@@ -191,7 +211,7 @@ always <code>Send</code>, but is only <code>Sync</code> for multi-producer (MPSC
 
                 <p>
                     Search functions by type signature (e.g.
-                    <code>vec -> usize</code>)
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
                 </p>
             </div>
         </div>
@@ -202,11 +222,9 @@ always <code>Send</code>, but is only <code>Sync</code> for multi-producer (MPSC
     <script>
         window.rootPath = "../";
         window.currentCrate = "magnetic";
-        window.playgroundUrl = "";
     </script>
     <script src="../jquery.js"></script>
     <script src="../main.js"></script>
-    
     <script defer src="../search-index.js"></script>
 </body>
 </html>

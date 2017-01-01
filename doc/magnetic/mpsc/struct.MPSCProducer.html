@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../../main.css">
+    
 
     
     
@@ -43,16 +44,22 @@
 
     <section id='main' class="content struct">
 <h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>magnetic</a>::<wbr><a href='index.html'>mpsc</a>::<wbr><a class='struct' href=''>MPSCProducer</a></span><span class='out-of-band'><span id='render-detail'>
-            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
-                [<span class='inner'>&#x2212;</span>]
-            </a>
-        </span><a id='src-181' class='srclink' href='../../src/magnetic/mpsc.rs.html#39-41' title='goto source code'>[src]</a></span></h1>
-<pre class='rust struct'>pub struct MPSCProducer&lt;T, B: <a class='trait' href='../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; {
-    // some fields omitted
-}</pre><div class='docblock'><p>Producer end of the queue. Implements the trait <code>Producer&lt;T&gt;</code>.</p>
-</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><code>impl&lt;T, B: <a class='trait' href='../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a> for <a class='struct' href='../../magnetic/mpsc/struct.MPSCProducer.html' title='magnetic::mpsc::MPSCProducer'>MPSCProducer</a>&lt;T, B&gt;</code></h3><div class='impl-items'></div><h3 class='impl'><code>impl&lt;T, B: <a class='trait' href='../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html' title='core::marker::Sync'>Sync</a> for <a class='struct' href='../../magnetic/mpsc/struct.MPSCProducer.html' title='magnetic::mpsc::MPSCProducer'>MPSCProducer</a>&lt;T, B&gt;</code></h3><div class='impl-items'></div><h3 class='impl'><code>impl&lt;T, B: <a class='trait' href='../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='../../magnetic/trait.Producer.html' title='magnetic::Producer'>Producer</a>&lt;T&gt; for <a class='struct' href='../../magnetic/mpsc/struct.MPSCProducer.html' title='magnetic::mpsc::MPSCProducer'>MPSCProducer</a>&lt;T, B&gt;</code></h3><div class='impl-items'><h4 id='method.push' class='method'><code>fn <a href='../../magnetic/trait.Producer.html#method.push' class='fnname'>push</a>(&amp;self, value: T)</code></h4>
-<h4 id='method.try_push' class='method'><code>fn <a href='../../magnetic/trait.Producer.html#method.try_push' class='fnname'>try_push</a>(&amp;self, value: T) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;T&gt;</code></h4>
-</div></section>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-194' class='srclink' href='../../src/magnetic/src/mpsc.rs.html#40-42' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct MPSCProducer&lt;T, B:&nbsp;<a class='trait' href='../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; { /* fields omitted */ }</pre><div class='docblock'><p>Producer end of the queue. Implements the trait <code>Producer&lt;T&gt;</code>.</p>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl&lt;T, B:&nbsp;<a class='trait' href='../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a> for <a class='struct' href='../../magnetic/mpsc/struct.MPSCProducer.html' title='magnetic::mpsc::MPSCProducer'>MPSCProducer</a>&lt;T, B&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-198' class='srclink' href='../../src/magnetic/src/mpsc.rs.html#44' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl&lt;T, B:&nbsp;<a class='trait' href='../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html' title='core::marker::Sync'>Sync</a> for <a class='struct' href='../../magnetic/mpsc/struct.MPSCProducer.html' title='magnetic::mpsc::MPSCProducer'>MPSCProducer</a>&lt;T, B&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-201' class='srclink' href='../../src/magnetic/src/mpsc.rs.html#45' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl&lt;T, B:&nbsp;<a class='trait' href='../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='../../magnetic/trait.Producer.html' title='magnetic::Producer'>Producer</a>&lt;T&gt; for <a class='struct' href='../../magnetic/mpsc/struct.MPSCProducer.html' title='magnetic::mpsc::MPSCProducer'>MPSCProducer</a>&lt;T, B&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-220' class='srclink' href='../../src/magnetic/src/mpsc.rs.html#92-137' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.push' class='method'><span id='push.v' class='invisible'><code>fn <a href='../../magnetic/trait.Producer.html#tymethod.push' class='fnname'>push</a>(&amp;self, value: T) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>, <a class='enum' href='../../magnetic/enum.PushError.html' title='magnetic::PushError'>PushError</a>&lt;T&gt;&gt;</code></span></h4>
+<div class='docblock'><p>Add value to front of the queue. This method will block if the queue is currently full. <a href="../../magnetic/trait.Producer.html#tymethod.push">Read more</a></p>
+</div><h4 id='method.try_push' class='method'><span id='try_push.v' class='invisible'><code>fn <a href='../../magnetic/trait.Producer.html#tymethod.try_push' class='fnname'>try_push</a>(&amp;self, value: T) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>, <a class='enum' href='../../magnetic/enum.TryPushError.html' title='magnetic::TryPushError'>TryPushError</a>&lt;T&gt;&gt;</code></span></h4>
+<div class='docblock'><p>Attempt to add a value to the front of the queue. If the value was added successfully, <code>None</code> will be returned. If unsuccessful, <code>value</code> will be returned. An unsuccessful push indicates that the queue was full. <a href="../../magnetic/trait.Producer.html#tymethod.try_push">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;T, B:&nbsp;<a class='trait' href='../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../magnetic/mpsc/struct.MPSCProducer.html' title='magnetic::mpsc::MPSCProducer'>MPSCProducer</a>&lt;T, B&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-249' class='srclink' href='../../src/magnetic/src/mpsc.rs.html#177-182' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.drop' class='method'><span id='drop.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></span></h4>
+<div class='docblock'><p>A method called when the value goes out of scope. <a href="https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop">Read more</a></p>
+</div></div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
@@ -75,6 +82,8 @@
                     <dd>Move down in search results</dd>
                     <dt>&#9166;</dt>
                     <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
                 </dl>
             </div>
 
@@ -95,7 +104,7 @@
 
                 <p>
                     Search functions by type signature (e.g.
-                    <code>vec -> usize</code>)
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
                 </p>
             </div>
         </div>
@@ -106,11 +115,9 @@
     <script>
         window.rootPath = "../../";
         window.currentCrate = "magnetic";
-        window.playgroundUrl = "";
     </script>
     <script src="../../jquery.js"></script>
     <script src="../../main.js"></script>
-    
     <script defer src="../../search-index.js"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../../main.css">
+    
 
     
     
@@ -43,10 +44,10 @@
 
     <section id='main' class="content mod">
 <h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>magnetic</a>::<wbr><a class='mod' href=''>mpmc</a></span><span class='out-of-band'><span id='render-detail'>
-            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
-                [<span class='inner'>&#x2212;</span>]
-            </a>
-        </span><a id='src-322' class='srclink' href='../../src/magnetic/mpmc.rs.html#1-263' title='goto source code'>[src]</a></span></h1>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-361' class='srclink' href='../../src/magnetic/src/mpmc.rs.html#1-352' title='goto source code'>[src]</a></span></h1>
 <div class='docblock'><p>Multiple-producer multiple-consumer queue</p>
 
 <p>The MPMC queue allows for pushing from one thread and popping from another.
@@ -55,34 +56,28 @@ multiple threads. In other words, both <code>MPMCProducer</code> and <code>MPMCC
 are <code>Send</code> and <code>Sync</code>.</p>
 </div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
-                    <tr class=' module-item'>
-                        <td><a class='struct' href='struct.MPMCConsumer.html'
-                               title='magnetic::mpmc::MPMCConsumer'>MPMCConsumer</a></td>
-                        <td class='docblock short'>
-                             <p>Consumer end of the queue. Implements the trait <code>Consumer&lt;T&gt;</code>.</p>
-
-                        </td>
-                    </tr>
-                
-                    <tr class=' module-item'>
-                        <td><a class='struct' href='struct.MPMCProducer.html'
-                               title='magnetic::mpmc::MPMCProducer'>MPMCProducer</a></td>
-                        <td class='docblock short'>
-                             <p>Producer end of the queue. Implements the trait <code>Producer&lt;T&gt;</code>.</p>
-
-                        </td>
-                    </tr>
-                </table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+                       <tr class=' module-item'>
+                           <td><a class='struct' href='struct.MPMCConsumer.html'
+                                  title='magnetic::mpmc::MPMCConsumer'>MPMCConsumer</a></td>
+                           <td class='docblock-short'>
+                                <p>Consumer end of the queue. Implements the trait <code>Consumer&lt;T&gt;</code>.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='struct' href='struct.MPMCProducer.html'
+                                  title='magnetic::mpmc::MPMCProducer'>MPMCProducer</a></td>
+                           <td class='docblock-short'>
+                                <p>Producer end of the queue. Implements the trait <code>Producer&lt;T&gt;</code>.</p>
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
 <table>
-                    <tr class=' module-item'>
-                        <td><a class='fn' href='fn.mpmc_queue.html'
-                               title='magnetic::mpmc::mpmc_queue'>mpmc_queue</a></td>
-                        <td class='docblock short'>
-                             <p>Creates a new MPMC queue</p>
-
-                        </td>
-                    </tr>
-                </table></section>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.mpmc_queue.html'
+                                  title='magnetic::mpmc::mpmc_queue'>mpmc_queue</a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a new MPMC queue</p>
+                           </td>
+                       </tr></table></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
@@ -105,6 +100,8 @@ are <code>Send</code> and <code>Sync</code>.</p>
                     <dd>Move down in search results</dd>
                     <dt>&#9166;</dt>
                     <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
                 </dl>
             </div>
 
@@ -125,7 +122,7 @@ are <code>Send</code> and <code>Sync</code>.</p>
 
                 <p>
                     Search functions by type signature (e.g.
-                    <code>vec -> usize</code>)
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
                 </p>
             </div>
         </div>
@@ -136,11 +133,9 @@ are <code>Send</code> and <code>Sync</code>.</p>
     <script>
         window.rootPath = "../../";
         window.currentCrate = "magnetic";
-        window.playgroundUrl = "";
     </script>
     <script src="../../jquery.js"></script>
     <script src="../../main.js"></script>
-    
     <script defer src="../../search-index.js"></script>
 </body>
 </html>

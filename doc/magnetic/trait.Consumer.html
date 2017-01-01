@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" type="text/css" href="../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../main.css">
+    
 
     
     
@@ -43,34 +44,34 @@
 
     <section id='main' class="content trait">
 <h1 class='fqn'><span class='in-band'>Trait <a href='index.html'>magnetic</a>::<wbr><a class='trait' href=''>Consumer</a></span><span class='out-of-band'><span id='render-detail'>
-            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
-                [<span class='inner'>&#x2212;</span>]
-            </a>
-        </span><a id='src-444' class='srclink' href='../src/magnetic/lib.rs.html#68-78' title='goto source code'>[src]</a></span></h1>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-496' class='srclink' href='../src/magnetic/src/lib.rs.html#102-112' title='goto source code'>[src]</a></span></h1>
 <pre class='rust trait'>pub trait Consumer&lt;T&gt; {
-    fn <a href='#tymethod.pop' class='fnname'>pop</a>(&amp;self) -&gt; T;
-    fn <a href='#tymethod.try_pop' class='fnname'>try_pop</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;T&gt;;
+    fn <a href='#tymethod.pop' class='fnname'>pop</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;T, <a class='enum' href='../magnetic/enum.PopError.html' title='magnetic::PopError'>PopError</a>&gt;;
+    fn <a href='#tymethod.try_pop' class='fnname'>try_pop</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;T, <a class='enum' href='../magnetic/enum.TryPopError.html' title='magnetic::TryPopError'>TryPopError</a>&gt;;
 }</pre><div class='docblock'><p>The consumer end of the queue allows for receiving data. <code>Consumer&lt;T&gt;</code> is
 always <code>Send</code>, but is only <code>Sync</code> for multi-consumer (SPMC, MPMC) queues.</p>
 </div>
             <h2 id='required-methods'>Required Methods</h2>
             <div class='methods'>
-        <h3 id='tymethod.pop' class='method stab '><code>fn <a href='#tymethod.pop' class='fnname'>pop</a>(&amp;self) -&gt; T</code></h3><div class='docblock'><p>Remove value from the end of the queue. This method will block if the
+        <h3 id='tymethod.pop' class='method stab '><span id='pop.v' class='invisible'><code>fn <a href='#tymethod.pop' class='fnname'>pop</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;T, <a class='enum' href='../magnetic/enum.PopError.html' title='magnetic::PopError'>PopError</a>&gt;</code></span></h3><div class='docblock'><p>Remove value from the end of the queue. This method will block if the
 queue is currently empty.</p>
-</div><h3 id='tymethod.try_pop' class='method stab '><code>fn <a href='#tymethod.try_pop' class='fnname'>try_pop</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;T&gt;</code></h3><div class='docblock'><p>Attempt to remove a value from the end of the queue. If the value was
+</div><h3 id='tymethod.try_pop' class='method stab '><span id='try_pop.v' class='invisible'><code>fn <a href='#tymethod.try_pop' class='fnname'>try_pop</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;T, <a class='enum' href='../magnetic/enum.TryPopError.html' title='magnetic::TryPopError'>TryPopError</a>&gt;</code></span></h3><div class='docblock'><p>Attempt to remove a value from the end of the queue. If the value was
 removed successfully, <code>Some(T)</code> will be returned. If unsuccessful,
 <code>None</code> will be returned. An unsuccessful pop indicates that the queue
 was empty.</p>
 </div></div>
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>
-    <li><code>impl&lt;T, B: <a class='trait' href='../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='../magnetic/trait.Consumer.html' title='magnetic::Consumer'>Consumer</a>&lt;T&gt; for <a class='struct' href='../magnetic/spsc/struct.SPSCConsumer.html' title='magnetic::spsc::SPSCConsumer'>SPSCConsumer</a>&lt;T, B&gt;</code></li>
-<li><code>impl&lt;T, B: <a class='trait' href='../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='../magnetic/trait.Consumer.html' title='magnetic::Consumer'>Consumer</a>&lt;T&gt; for <a class='struct' href='../magnetic/mpsc/struct.MPSCConsumer.html' title='magnetic::mpsc::MPSCConsumer'>MPSCConsumer</a>&lt;T, B&gt;</code></li>
-<li><code>impl&lt;T, B: <a class='trait' href='../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='../magnetic/trait.Consumer.html' title='magnetic::Consumer'>Consumer</a>&lt;T&gt; for <a class='struct' href='../magnetic/spmc/struct.SPMCConsumer.html' title='magnetic::spmc::SPMCConsumer'>SPMCConsumer</a>&lt;T, B&gt;</code></li>
-<li><code>impl&lt;T, B: <a class='trait' href='../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; <a class='trait' href='../magnetic/trait.Consumer.html' title='magnetic::Consumer'>Consumer</a>&lt;T&gt; for <a class='struct' href='../magnetic/mpmc/struct.MPMCConsumer.html' title='magnetic::mpmc::MPMCConsumer'>MPMCConsumer</a>&lt;T, B&gt;</code></li>
+    <li><code>impl&lt;T, B:&nbsp;<a class='trait' href='../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; Consumer&lt;T&gt; for <a class='struct' href='../magnetic/spsc/struct.SPSCConsumer.html' title='magnetic::spsc::SPSCConsumer'>SPSCConsumer</a>&lt;T, B&gt;</code></li>
+<li><code>impl&lt;T, B:&nbsp;<a class='trait' href='../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; Consumer&lt;T&gt; for <a class='struct' href='../magnetic/mpsc/struct.MPSCConsumer.html' title='magnetic::mpsc::MPSCConsumer'>MPSCConsumer</a>&lt;T, B&gt;</code></li>
+<li><code>impl&lt;T, B:&nbsp;<a class='trait' href='../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; Consumer&lt;T&gt; for <a class='struct' href='../magnetic/spmc/struct.SPMCConsumer.html' title='magnetic::spmc::SPMCConsumer'>SPMCConsumer</a>&lt;T, B&gt;</code></li>
+<li><code>impl&lt;T, B:&nbsp;<a class='trait' href='../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt;&gt; Consumer&lt;T&gt; for <a class='struct' href='../magnetic/mpmc/struct.MPMCConsumer.html' title='magnetic::mpmc::MPMCConsumer'>MPMCConsumer</a>&lt;T, B&gt;</code></li>
 </ul><script type="text/javascript" async
-                              src="../implementors/magnetic/trait.Consumer.js">
-                      </script></section>
+                         src="../implementors/magnetic/trait.Consumer.js">
+                 </script></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
@@ -93,6 +94,8 @@ was empty.</p>
                     <dd>Move down in search results</dd>
                     <dt>&#9166;</dt>
                     <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
                 </dl>
             </div>
 
@@ -113,7 +116,7 @@ was empty.</p>
 
                 <p>
                     Search functions by type signature (e.g.
-                    <code>vec -> usize</code>)
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
                 </p>
             </div>
         </div>
@@ -124,11 +127,9 @@ was empty.</p>
     <script>
         window.rootPath = "../";
         window.currentCrate = "magnetic";
-        window.playgroundUrl = "";
     </script>
     <script src="../jquery.js"></script>
     <script src="../main.js"></script>
-    
     <script defer src="../search-index.js"></script>
 </body>
 </html>

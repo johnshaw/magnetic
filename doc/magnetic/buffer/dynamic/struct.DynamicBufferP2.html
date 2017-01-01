@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../../../main.css">
+    
 
     
     
@@ -43,25 +44,31 @@
 
     <section id='main' class="content struct">
 <h1 class='fqn'><span class='in-band'>Struct <a href='../../index.html'>magnetic</a>::<wbr><a href='../index.html'>buffer</a>::<wbr><a href='index.html'>dynamic</a>::<wbr><a class='struct' href=''>DynamicBufferP2</a></span><span class='out-of-band'><span id='render-detail'>
-            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
-                [<span class='inner'>&#x2212;</span>]
-            </a>
-        </span><a id='src-37' class='srclink' href='../../../src/magnetic/buffer/dynamic.rs.html#55-58' title='goto source code'>[src]</a></span></h1>
-<pre class='rust struct'>pub struct DynamicBufferP2&lt;T&gt; {
-    // some fields omitted
-}</pre><div class='docblock'><p>Holds data allocated from the heap at run time. Similar to <code>DynamicBuffer</code>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-34' class='srclink' href='../../../src/magnetic/src/buffer/dynamic.rs.html#55-58' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct DynamicBufferP2&lt;T&gt; { /* fields omitted */ }</pre><div class='docblock'><p>Holds data allocated from the heap at run time. Similar to <code>DynamicBuffer</code>
 except that the size must be a power of two. This will result in slightly
 faster runtime performance due to the use of a mask instead of modulus
 when computing buffer indexes.</p>
-</div><h2 id='methods'>Methods</h2><h3 class='impl'><code>impl&lt;T&gt; <a class='struct' href='../../../magnetic/buffer/dynamic/struct.DynamicBufferP2.html' title='magnetic::buffer::dynamic::DynamicBufferP2'>DynamicBufferP2</a>&lt;T&gt;</code></h3><div class='impl-items'><h4 id='method.new' class='method'><code>fn <a href='#method.new' class='fnname'>new</a>(size: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;Self, &amp;'static <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;</code></h4>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl&lt;T&gt; <a class='struct' href='../../../magnetic/buffer/dynamic/struct.DynamicBufferP2.html' title='magnetic::buffer::dynamic::DynamicBufferP2'>DynamicBufferP2</a>&lt;T&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-38' class='srclink' href='../../../src/magnetic/src/buffer/dynamic.rs.html#60-72' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.new' class='method'><span id='new.v' class='invisible'><code>fn <a href='#method.new' class='fnname'>new</a>(size: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;Self, &amp;'static <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;</code></span></h4>
 <div class='docblock'><p>Create a new <code>DynamicBufferP2</code> of the given size. This method will
 return an error if the requested number of bytes could not be
 allocated or size is not a power of two.</p>
-</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><code>impl&lt;T&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../../magnetic/buffer/dynamic/struct.DynamicBufferP2.html' title='magnetic::buffer::dynamic::DynamicBufferP2'>DynamicBufferP2</a>&lt;T&gt;</code></h3><div class='impl-items'><h4 id='method.drop' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#method.drop' class='fnname'>drop</a>(&amp;mut self)</code></h4>
-</div><h3 class='impl'><code>impl&lt;T: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a>&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a> for <a class='struct' href='../../../magnetic/buffer/dynamic/struct.DynamicBufferP2.html' title='magnetic::buffer::dynamic::DynamicBufferP2'>DynamicBufferP2</a>&lt;T&gt;</code></h3><div class='impl-items'></div><h3 class='impl'><code>impl&lt;T&gt; <a class='trait' href='../../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt; for <a class='struct' href='../../../magnetic/buffer/dynamic/struct.DynamicBufferP2.html' title='magnetic::buffer::dynamic::DynamicBufferP2'>DynamicBufferP2</a>&lt;T&gt;</code></h3><div class='impl-items'><h4 id='method.size' class='method'><code>fn <a href='../../../magnetic/buffer/trait.Buffer.html#method.size' class='fnname'>size</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a></code></h4>
-<h4 id='method.at' class='method'><code>fn <a href='../../../magnetic/buffer/trait.Buffer.html#method.at' class='fnname'>at</a>(&amp;self, idx: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*const T</a></code></h4>
-<h4 id='method.at_mut' class='method'><code>fn <a href='../../../magnetic/buffer/trait.Buffer.html#method.at_mut' class='fnname'>at_mut</a>(&amp;mut self, idx: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut T</a></code></h4>
-</div></section>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl&lt;T&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../../magnetic/buffer/dynamic/struct.DynamicBufferP2.html' title='magnetic::buffer::dynamic::DynamicBufferP2'>DynamicBufferP2</a>&lt;T&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-42' class='srclink' href='../../../src/magnetic/src/buffer/dynamic.rs.html#74-78' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.drop' class='method'><span id='drop.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></span></h4>
+<div class='docblock'><p>A method called when the value goes out of scope. <a href="https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;T:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a>&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a> for <a class='struct' href='../../../magnetic/buffer/dynamic/struct.DynamicBufferP2.html' title='magnetic::buffer::dynamic::DynamicBufferP2'>DynamicBufferP2</a>&lt;T&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-46' class='srclink' href='../../../src/magnetic/src/buffer/dynamic.rs.html#80' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl&lt;T&gt; <a class='trait' href='../../../magnetic/buffer/trait.Buffer.html' title='magnetic::buffer::Buffer'>Buffer</a>&lt;T&gt; for <a class='struct' href='../../../magnetic/buffer/dynamic/struct.DynamicBufferP2.html' title='magnetic::buffer::dynamic::DynamicBufferP2'>DynamicBufferP2</a>&lt;T&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-48' class='srclink' href='../../../src/magnetic/src/buffer/dynamic.rs.html#82-99' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.size' class='method'><span id='size.v' class='invisible'><code>fn <a href='../../../magnetic/buffer/trait.Buffer.html#tymethod.size' class='fnname'>size</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a></code></span></h4>
+<div class='docblock'><p>Return the size of the buffer</p>
+</div><h4 id='method.at' class='method'><span id='at.v' class='invisible'><code>fn <a href='../../../magnetic/buffer/trait.Buffer.html#tymethod.at' class='fnname'>at</a>(&amp;self, idx: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*const T</a></code></span></h4>
+<div class='docblock'><p>Return a pointer to data at the given index. It is expected that this function use modular arithmetic since <code>idx</code> may refer to a location beyond the end of the buffer. <a href="../../../magnetic/buffer/trait.Buffer.html#tymethod.at">Read more</a></p>
+</div><h4 id='method.at_mut' class='method'><span id='at_mut.v' class='invisible'><code>fn <a href='../../../magnetic/buffer/trait.Buffer.html#tymethod.at_mut' class='fnname'>at_mut</a>(&amp;mut self, idx: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut T</a></code></span></h4>
+<div class='docblock'><p>Return a mutable pointer to data at the given index. It is expected that this function use modular arithmetic since <code>idx</code> may refer to a location beyond the end of the buffer. <a href="../../../magnetic/buffer/trait.Buffer.html#tymethod.at_mut">Read more</a></p>
+</div></div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
@@ -84,6 +91,8 @@ allocated or size is not a power of two.</p>
                     <dd>Move down in search results</dd>
                     <dt>&#9166;</dt>
                     <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
                 </dl>
             </div>
 
@@ -104,7 +113,7 @@ allocated or size is not a power of two.</p>
 
                 <p>
                     Search functions by type signature (e.g.
-                    <code>vec -> usize</code>)
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
                 </p>
             </div>
         </div>
@@ -115,11 +124,9 @@ allocated or size is not a power of two.</p>
     <script>
         window.rootPath = "../../../";
         window.currentCrate = "magnetic";
-        window.playgroundUrl = "";
     </script>
     <script src="../../../jquery.js"></script>
     <script src="../../../main.js"></script>
-    
     <script defer src="../../../search-index.js"></script>
 </body>
 </html>
