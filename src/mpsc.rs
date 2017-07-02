@@ -15,13 +15,17 @@ use super::{Consumer, Producer, PushError, TryPushError, PopError, TryPopError};
 use super::buffer::Buffer;
 use util::{pause, buf_read, buf_write};
 
-//#[repr(C)]
-struct MPSCQueue<T, B: Buffer<T>> {
+#[repr(C)]
+struct Base {
     head: AtomicUsize,
     next_head: AtomicUsize,
     _pad1: [u8; 48],
     tail: AtomicUsize,
     _pad2: [u8; 56],
+}
+
+struct MPSCQueue<T, B: Buffer<T>> {
+    base: Base,
     buf: B,
     ok: AtomicBool,
     _marker: PhantomData<T>
@@ -61,11 +65,13 @@ unsafe impl<T, B: Buffer<T>> Sync for MPSCProducer<T, B> {}
 pub fn mpsc_queue<T, B: Buffer<T>>(buf: B)
         -> (MPSCProducer<T, B>, MPSCConsumer<T, B>) {
     let queue = MPSCQueue {
-        head: AtomicUsize::new(0),
-        next_head: AtomicUsize::new(0),
-        _pad1: [0; 48],
-        tail: AtomicUsize::new(0),
-        _pad2: [0; 56],
+        base: Base {
+            head: AtomicUsize::new(0),
+            next_head: AtomicUsize::new(0),
+            _pad1: [0; 48],
+            tail: AtomicUsize::new(0),
+            _pad2: [0; 56]
+        },
         buf: buf,
         ok: AtomicBool::new(true),
         _marker: PhantomData
@@ -81,8 +87,8 @@ pub fn mpsc_queue<T, B: Buffer<T>>(buf: B)
 
 impl<T, B: Buffer<T>> Drop for MPSCQueue<T, B> {
     fn drop(&mut self) {
-        let head = self.head.load(Ordering::Relaxed);
-        let tail = self.tail.load(Ordering::Relaxed);
+        let head = self.base.head.load(Ordering::Relaxed);
+        let tail = self.base.tail.load(Ordering::Relaxed);
         for pos in tail..head {
             buf_read(&self.buf, pos);
         }
@@ -93,8 +99,8 @@ impl<T, B: Buffer<T>> Producer<T> for MPSCProducer<T, B> {
     fn push(&self, value: T) -> Result<(), PushError<T>> {
         let q = unsafe { &mut *self.queue.get() };
 
-        let head = q.next_head.fetch_add(1, Ordering::Relaxed);
-        while q.tail.load(Ordering::Acquire) + q.buf.size() <= head {
+        let head = q.base.next_head.fetch_add(1, Ordering::Relaxed);
+        while q.base.tail.load(Ordering::Acquire) + q.buf.size() <= head {
             if !q.ok.load(Ordering::Relaxed) {
                 return Err(PushError::Disconnected(value));
             }
@@ -103,17 +109,17 @@ impl<T, B: Buffer<T>> Producer<T> for MPSCProducer<T, B> {
 
         buf_write(&mut q.buf, head, value);
 
-        while q.head.load(Ordering::Relaxed) < head { pause(); }
-        q.head.store(head + 1, Ordering::Release);
+        while q.base.head.load(Ordering::Relaxed) < head { pause(); }
+        q.base.head.store(head + 1, Ordering::Release);
         Ok(())
     }
 
     fn try_push(&self, value: T) -> Result<(), TryPushError<T>> {
         let q = unsafe { &mut *self.queue.get() };
 
-        let head = q.head.load(Ordering::Relaxed);
+        let head = q.base.head.load(Ordering::Relaxed);
 
-        if q.tail.load(Ordering::Relaxed) + q.buf.size() <= head {
+        if q.base.tail.load(Ordering::Relaxed) + q.buf.size() <= head {
             if q.ok.load(Ordering::Relaxed) {
                 return Err(TryPushError::Full(value))
             } else {
@@ -121,9 +127,9 @@ impl<T, B: Buffer<T>> Producer<T> for MPSCProducer<T, B> {
             }
         } else {
             let next = head + 1;
-            if q.next_head.compare_and_swap(head, next, Ordering::Acquire) == head {
+            if q.base.next_head.compare_and_swap(head, next, Ordering::Acquire) == head {
                 buf_write(&mut q.buf, head, value);
-                q.head.store(next, Ordering::Release);
+                q.base.head.store(next, Ordering::Release);
                 Ok(())
             } else {
                 if q.ok.load(Ordering::Relaxed) {
@@ -140,9 +146,9 @@ impl<T, B: Buffer<T>> Consumer<T> for MPSCConsumer<T, B> {
     fn pop(&self) -> Result<T, PopError> {
         let q = unsafe { &mut *self.queue.get() };
 
-        let tail = q.tail.load(Ordering::Relaxed);
+        let tail = q.base.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
-        while tail_plus_one > q.head.load(Ordering::Acquire) {
+        while tail_plus_one > q.base.head.load(Ordering::Acquire) {
             if !q.ok.load(Ordering::Relaxed) {
                 return Err(PopError::Disconnected);
             }
@@ -151,16 +157,16 @@ impl<T, B: Buffer<T>> Consumer<T> for MPSCConsumer<T, B> {
 
         let v = buf_read(&q.buf, tail);
 
-        q.tail.store(tail_plus_one, Ordering::Release);
+        q.base.tail.store(tail_plus_one, Ordering::Release);
         Ok(v)
     }
 
     fn try_pop(&self) -> Result<T, TryPopError> {
         let q = unsafe { &mut *self.queue.get() };
-        let tail = q.tail.load(Ordering::Relaxed);
+        let tail = q.base.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
 
-        if tail_plus_one > q.head.load(Ordering::Acquire) {
+        if tail_plus_one > q.base.head.load(Ordering::Acquire) {
             if q.ok.load(Ordering::Relaxed) {
                 Err(TryPopError::Empty)
             } else {
@@ -168,7 +174,7 @@ impl<T, B: Buffer<T>> Consumer<T> for MPSCConsumer<T, B> {
             }
         } else {
             let v = buf_read(&q.buf, tail);
-            q.tail.store(tail_plus_one, Ordering::Release);
+            q.base.tail.store(tail_plus_one, Ordering::Release);
             Ok(v)
         }
     }
