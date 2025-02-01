@@ -8,7 +8,7 @@
 use std::cell::UnsafeCell;
 use std::hint::spin_loop;
 use std::marker::PhantomData;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use crossbeam_utils::CachePadded;
@@ -21,7 +21,8 @@ struct MPMCQueue<T, B: Buffer<T>> {
     head: CachePadded<AtomicPair>,
     tail: CachePadded<AtomicPair>,
     buf: B,
-    ok: AtomicBool,
+    producers: AtomicUsize,
+    consumers: AtomicUsize,
     _marker: PhantomData<T>,
 }
 
@@ -33,7 +34,16 @@ pub struct MPMCConsumer<T, B: Buffer<T>> {
 }
 
 unsafe impl<T: Send, B: Buffer<T>> Send for MPMCConsumer<T, B> {}
-unsafe impl<T: Send, B: Buffer<T>> Sync for MPMCConsumer<T, B> {}
+
+impl<T, B: Buffer<T>> Clone for MPMCConsumer<T, B> {
+    fn clone(&self) -> Self {
+        let q = unsafe { &mut *self.queue.get() };
+        q.consumers.fetch_add(1, Ordering::Release);
+        MPMCConsumer {
+            queue: self.queue.clone(),
+        }
+    }
+}
 
 /// Producer end of the queue. Implements the trait `Producer<T>`.
 pub struct MPMCProducer<T, B: Buffer<T>> {
@@ -41,7 +51,16 @@ pub struct MPMCProducer<T, B: Buffer<T>> {
 }
 
 unsafe impl<T: Send, B: Buffer<T>> Send for MPMCProducer<T, B> {}
-unsafe impl<T: Send, B: Buffer<T>> Sync for MPMCProducer<T, B> {}
+
+impl<T, B: Buffer<T>> Clone for MPMCProducer<T, B> {
+    fn clone(&self) -> Self {
+        let q = unsafe { &mut *self.queue.get() };
+        q.producers.fetch_add(1, Ordering::Release);
+        MPMCProducer {
+            queue: self.queue.clone(),
+        }
+    }
+}
 
 /// Creates a new MPMC queue
 ///
@@ -62,7 +81,8 @@ pub fn mpmc_queue<T, B: Buffer<T>>(buf: B) -> (MPMCProducer<T, B>, MPMCConsumer<
         head: CachePadded::new(AtomicPair::default()),
         tail: CachePadded::new(AtomicPair::default()),
         buf,
-        ok: AtomicBool::new(true),
+        producers: AtomicUsize::new(1),
+        consumers: AtomicUsize::new(1),
         _marker: PhantomData,
     };
 
@@ -92,7 +112,7 @@ impl<T, B: Buffer<T>> Producer<T> for MPMCProducer<T, B> {
 
         let head = q.head.next.fetch_add(1, Ordering::Relaxed);
         loop {
-            if !q.ok.load(Ordering::Acquire) {
+            if q.consumers.load(Ordering::Acquire) == 0 {
                 return Err(PushError::Disconnected(value));
             } else if q.tail.curr.load(Ordering::Acquire) + q.buf.size() > head {
                 break;
@@ -113,7 +133,7 @@ impl<T, B: Buffer<T>> Producer<T> for MPMCProducer<T, B> {
         let q = unsafe { &mut *self.queue.get() };
         loop {
             let head = q.head.curr.load(Ordering::Relaxed);
-            if !q.ok.load(Ordering::Acquire) {
+            if q.consumers.load(Ordering::Acquire) == 0 {
                 return Err(TryPushError::Disconnected(value));
             } else if q.tail.curr.load(Ordering::Acquire) + q.buf.size() <= head {
                 return Err(TryPushError::Full(value));
@@ -142,7 +162,7 @@ impl<T, B: Buffer<T>> Consumer<T> for MPMCConsumer<T, B> {
         loop {
             if tail_plus_one <= q.head.curr.load(Ordering::Acquire) {
                 break;
-            } else if !q.ok.load(Ordering::Acquire) {
+            } else if q.producers.load(Ordering::Acquire) == 0 {
                 return Err(PopError::Disconnected);
             }
             spin_loop();
@@ -163,7 +183,7 @@ impl<T, B: Buffer<T>> Consumer<T> for MPMCConsumer<T, B> {
             let tail = q.tail.curr.load(Ordering::Relaxed);
             let tail_plus_one = tail + 1;
             if tail_plus_one > q.head.curr.load(Ordering::Acquire) {
-                if q.ok.load(Ordering::Acquire) {
+                if q.producers.load(Ordering::Acquire) > 0 {
                     return Err(TryPopError::Empty);
                 } else {
                     return Err(TryPopError::Disconnected);
@@ -185,20 +205,19 @@ impl<T, B: Buffer<T>> Consumer<T> for MPMCConsumer<T, B> {
 impl<T, B: Buffer<T>> Drop for MPMCProducer<T, B> {
     fn drop(&mut self) {
         let q = unsafe { &mut *self.queue.get() };
-        q.ok.store(false, Ordering::Release);
+        q.producers.fetch_sub(1, Ordering::Release);
     }
 }
 
 impl<T, B: Buffer<T>> Drop for MPMCConsumer<T, B> {
     fn drop(&mut self) {
         let q = unsafe { &mut *self.queue.get() };
-        q.ok.store(false, Ordering::Release);
+        q.consumers.fetch_sub(1, Ordering::Release);
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
     use std::thread::spawn;
 
     use super::super::buffer::dynamic::DynamicBuffer;
@@ -259,11 +278,9 @@ mod test {
 
         let count = 10_000_000;
 
-        let p2 = Arc::new(p);
-
         let mut producers = Vec::new();
         for _ in 0..2 {
-            let p = p2.clone();
+            let p = p.clone();
             producers.push(spawn(move || {
                 for i in 0..count {
                     p.push(i).unwrap();
@@ -271,10 +288,9 @@ mod test {
             }));
         }
 
-        let c2 = Arc::new(c);
         let mut consumers = Vec::new();
         for _ in 0..2 {
-            let c = c2.clone();
+            let c = c.clone();
             consumers.push(spawn(move || {
                 (0..count).fold(0u64, |a, _| a + c.pop().unwrap())
             }));

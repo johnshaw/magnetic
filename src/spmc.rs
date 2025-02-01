@@ -22,7 +22,7 @@ struct SPMCQueue<T, B: Buffer<T>> {
     head: CachePadded<AtomicUsize>,
     tail: CachePadded<AtomicPair>,
     buf: B,
-    ok: AtomicBool,
+    producer: AtomicBool,
     _marker: PhantomData<T>,
 }
 
@@ -34,7 +34,14 @@ pub struct SPMCConsumer<T, B: Buffer<T>> {
 }
 
 unsafe impl<T: Send, B: Buffer<T>> Send for SPMCConsumer<T, B> {}
-unsafe impl<T: Send, B: Buffer<T>> Sync for SPMCConsumer<T, B> {}
+
+impl<T, B: Buffer<T>> Clone for SPMCConsumer<T, B> {
+    fn clone(&self) -> Self {
+        Self {
+            queue: self.queue.clone(),
+        }
+    }
+}
 
 /// Producer end of the queue. Implements the trait `Producer<T>`.
 pub struct SPMCProducer<T, B: Buffer<T>> {
@@ -62,7 +69,7 @@ pub fn spmc_queue<T, B: Buffer<T>>(buf: B) -> (SPMCProducer<T, B>, SPMCConsumer<
         head: CachePadded::new(AtomicUsize::new(0)),
         tail: CachePadded::new(AtomicPair::default()),
         buf,
-        ok: AtomicBool::new(true),
+        producer: AtomicBool::new(true),
         _marker: PhantomData,
     };
 
@@ -92,7 +99,7 @@ impl<T, B: Buffer<T>> Producer<T> for SPMCProducer<T, B> {
         let head = q.head.load(Ordering::Relaxed);
 
         loop {
-            if !q.ok.load(Ordering::Acquire) {
+            if Arc::strong_count(&self.queue) < 2 {
                 return Err(PushError::Disconnected(value));
             } else if q.tail.curr.load(Ordering::Acquire) + q.buf.size() > head {
                 break;
@@ -108,7 +115,7 @@ impl<T, B: Buffer<T>> Producer<T> for SPMCProducer<T, B> {
     fn try_push(&self, value: T) -> Result<(), TryPushError<T>> {
         let q = unsafe { &mut *self.queue.get() };
         let head = q.head.load(Ordering::Relaxed);
-        if !q.ok.load(Ordering::Acquire) {
+        if Arc::strong_count(&self.queue) < 2 {
             Err(TryPushError::Disconnected(value))
         } else if q.tail.curr.load(Ordering::Acquire) + q.buf.size() <= head {
             Err(TryPushError::Full(value))
@@ -129,7 +136,7 @@ impl<T, B: Buffer<T>> Consumer<T> for SPMCConsumer<T, B> {
         loop {
             if tail_plus_one <= q.head.load(Ordering::Acquire) {
                 break;
-            } else if !q.ok.load(Ordering::Acquire) {
+            } else if !q.producer.load(Ordering::Acquire) {
                 return Err(PopError::Disconnected);
             }
             spin_loop();
@@ -150,7 +157,7 @@ impl<T, B: Buffer<T>> Consumer<T> for SPMCConsumer<T, B> {
             let tail = q.tail.curr.load(Ordering::Relaxed);
             let tail_plus_one = tail + 1;
             if tail_plus_one > q.head.load(Ordering::Acquire) {
-                if q.ok.load(Ordering::Acquire) {
+                if q.producer.load(Ordering::Acquire) {
                     return Err(TryPopError::Empty);
                 } else {
                     return Err(TryPopError::Disconnected);
@@ -172,20 +179,12 @@ impl<T, B: Buffer<T>> Consumer<T> for SPMCConsumer<T, B> {
 impl<T, B: Buffer<T>> Drop for SPMCProducer<T, B> {
     fn drop(&mut self) {
         let q = unsafe { &mut *self.queue.get() };
-        q.ok.store(false, Ordering::Release);
-    }
-}
-
-impl<T, B: Buffer<T>> Drop for SPMCConsumer<T, B> {
-    fn drop(&mut self) {
-        let q = unsafe { &mut *self.queue.get() };
-        q.ok.store(false, Ordering::Release);
+        q.producer.store(false, Ordering::Release);
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
     use std::thread::spawn;
 
     use super::super::buffer::dynamic::DynamicBuffer;
@@ -253,10 +252,9 @@ mod test {
             }
         });
 
-        let c2 = Arc::new(c);
         let mut consumers = Vec::new();
         for _ in 0..3 {
-            let c = c2.clone();
+            let c = c.clone();
             consumers.push(spawn(move || {
                 (0..count).fold(0u64, |a, _| a + c.pop().unwrap())
             }));

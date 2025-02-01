@@ -8,7 +8,7 @@
 use std::cell::UnsafeCell;
 use std::hint::spin_loop;
 use std::marker::PhantomData;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use crossbeam_utils::CachePadded;
@@ -21,7 +21,6 @@ struct SPSCQueue<T, B: Buffer<T>> {
     head: CachePadded<AtomicUsize>,
     tail: CachePadded<AtomicUsize>,
     buf: B,
-    ok: AtomicBool,
     _marker: PhantomData<T>,
 }
 
@@ -60,7 +59,6 @@ pub fn spsc_queue<T, B: Buffer<T>>(buf: B) -> (SPSCProducer<T, B>, SPSCConsumer<
         head: CachePadded::new(AtomicUsize::new(0)),
         tail: CachePadded::new(AtomicUsize::new(0)),
         buf,
-        ok: AtomicBool::new(true),
         _marker: PhantomData,
     };
 
@@ -90,7 +88,7 @@ impl<T, B: Buffer<T>> Producer<T> for SPSCProducer<T, B> {
         let head = q.head.load(Ordering::Relaxed);
 
         loop {
-            if !q.ok.load(Ordering::Acquire) {
+            if Arc::strong_count(&self.queue) < 2 {
                 return Err(PushError::Disconnected(value));
             } else if q.tail.load(Ordering::Acquire) + q.buf.size() > head {
                 break;
@@ -106,7 +104,7 @@ impl<T, B: Buffer<T>> Producer<T> for SPSCProducer<T, B> {
     fn try_push(&self, value: T) -> Result<(), TryPushError<T>> {
         let q = unsafe { &mut *self.queue.get() };
         let head = q.head.load(Ordering::Relaxed);
-        if !q.ok.load(Ordering::Acquire) {
+        if Arc::strong_count(&self.queue) < 2 {
             Err(TryPushError::Disconnected(value))
         } else if q.tail.load(Ordering::Acquire) + q.buf.size() <= head {
             Err(TryPushError::Full(value))
@@ -127,7 +125,7 @@ impl<T, B: Buffer<T>> Consumer<T> for SPSCConsumer<T, B> {
         loop {
             if tail_plus_one <= q.head.load(Ordering::Acquire) {
                 break;
-            } else if !q.ok.load(Ordering::Acquire) {
+            } else if Arc::strong_count(&self.queue) < 2 {
                 return Err(PopError::Disconnected);
             }
             spin_loop();
@@ -145,7 +143,7 @@ impl<T, B: Buffer<T>> Consumer<T> for SPSCConsumer<T, B> {
         let tail_plus_one = tail + 1;
 
         if tail_plus_one > q.head.load(Ordering::Acquire) {
-            if q.ok.load(Ordering::Acquire) {
+            if Arc::strong_count(&self.queue) > 1 {
                 Err(TryPopError::Empty)
             } else {
                 Err(TryPopError::Disconnected)
@@ -155,20 +153,6 @@ impl<T, B: Buffer<T>> Consumer<T> for SPSCConsumer<T, B> {
             q.tail.store(tail_plus_one, Ordering::Release);
             Ok(v)
         }
-    }
-}
-
-impl<T, B: Buffer<T>> Drop for SPSCProducer<T, B> {
-    fn drop(&mut self) {
-        let q = unsafe { &mut *self.queue.get() };
-        q.ok.store(false, Ordering::Release);
-    }
-}
-
-impl<T, B: Buffer<T>> Drop for SPSCConsumer<T, B> {
-    fn drop(&mut self) {
-        let q = unsafe { &mut *self.queue.get() };
-        q.ok.store(false, Ordering::Release);
     }
 }
 
