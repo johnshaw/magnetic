@@ -39,6 +39,8 @@
 
 #![deny(missing_docs)]
 
+use std::fmt;
+
 pub mod buffer;
 pub mod mpmc;
 pub mod mpsc;
@@ -47,14 +49,32 @@ pub mod spsc;
 mod util;
 
 /// Possible errors for `Producer::push`
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PushError<T> {
     /// Consumer was destroyed
     Disconnected(T),
 }
 
+impl<T> fmt::Debug for PushError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Disconnected(_) => f.pad("Disconnected(_)"),
+        }
+    }
+}
+
+impl<T> fmt::Display for PushError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Disconnected(_) => "queue abandoned".fmt(f),
+        }
+    }
+}
+
+impl<T> std::error::Error for PushError<T> {}
+
 /// Possible errors for `Producer::try_push`
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TryPushError<T> {
     /// Queue was full
     Full(T),
@@ -62,21 +82,62 @@ pub enum TryPushError<T> {
     Disconnected(T),
 }
 
+impl<T> fmt::Debug for TryPushError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Full(_) => f.pad("Full(_)"),
+            Self::Disconnected(_) => f.pad("Disconnected(_)"),
+        }
+    }
+}
+
+impl<T> fmt::Display for TryPushError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Full(_) => "queue full".fmt(f),
+            Self::Disconnected(_) => "queue abandoned".fmt(f),
+        }
+    }
+}
+
+impl<T> std::error::Error for TryPushError<T> {}
+
 /// Possible errors for `Consumer::pop`
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PopError {
     /// Producer was destroyed
     Disconnected,
 }
 
+impl fmt::Display for PopError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Disconnected => "queue abandoned".fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for PopError {}
+
 /// Possible errors for `Consumer::try_pop`
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TryPopError {
     /// Queue was empty
     Empty,
     /// Producer was destroyed
     Disconnected,
 }
+
+impl fmt::Display for TryPopError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Empty => "queue empty".fmt(f),
+            Self::Disconnected => "queue abandoned".fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for TryPopError {}
 
 /// The consumer end of the queue allows for sending data. `Producer<T>` is
 /// always `Send`, but is only `Sync` for multi-producer (MPSC, MPMC) queues.
