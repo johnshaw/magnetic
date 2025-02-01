@@ -127,10 +127,9 @@ impl<T, B: Buffer<T>> Consumer<T> for SPMCConsumer<T, B> {
         let tail = q.tail.next.fetch_add(1, Ordering::Relaxed);
         let tail_plus_one = tail + 1;
         loop {
-            let ok = q.ok.load(Ordering::Acquire);
             if tail_plus_one <= q.head.load(Ordering::Acquire) {
                 break;
-            } else if !ok {
+            } else if !q.ok.load(Ordering::Acquire) {
                 return Err(PopError::Disconnected);
             }
             spin_loop();
@@ -150,9 +149,8 @@ impl<T, B: Buffer<T>> Consumer<T> for SPMCConsumer<T, B> {
         loop {
             let tail = q.tail.curr.load(Ordering::Relaxed);
             let tail_plus_one = tail + 1;
-            let ok = q.ok.load(Ordering::Acquire);
             if tail_plus_one > q.head.load(Ordering::Acquire) {
-                if ok {
+                if q.ok.load(Ordering::Acquire) {
                     return Err(TryPopError::Empty);
                 } else {
                     return Err(TryPopError::Disconnected);

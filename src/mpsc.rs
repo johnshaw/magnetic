@@ -140,10 +140,9 @@ impl<T, B: Buffer<T>> Consumer<T> for MPSCConsumer<T, B> {
         let tail = q.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
         loop {
-            let ok = q.ok.load(Ordering::Acquire);
             if tail_plus_one <= q.head.curr.load(Ordering::Acquire) {
                 break;
-            } else if !ok {
+            } else if !q.ok.load(Ordering::Acquire) {
                 return Err(PopError::Disconnected);
             }
             spin_loop();
@@ -160,9 +159,8 @@ impl<T, B: Buffer<T>> Consumer<T> for MPSCConsumer<T, B> {
         let tail = q.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
 
-        let ok = q.ok.load(Ordering::Acquire);
         if tail_plus_one > q.head.curr.load(Ordering::Acquire) {
-            if ok {
+            if q.ok.load(Ordering::Acquire) {
                 Err(TryPopError::Empty)
             } else {
                 Err(TryPopError::Disconnected)
