@@ -5,6 +5,7 @@
 //! In other words, both the `SPSCProducer` and `SPSCConsumer` are `Send` and
 //! `!Sync`.
 
+use std::cell::Cell;
 use std::hint::spin_loop;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -26,13 +27,19 @@ struct SPSCQueue<T, B: Buffer<T>> {
 /// Consumer end of the queue. Implements the trait `Consumer<T>`.
 pub struct SPSCConsumer<T, B: Buffer<T>> {
     queue: Arc<SPSCQueue<T, B>>,
-    _not_sync: PhantomData<std::cell::Cell<()>>,
+    /// A copy of `queue.head` for quick access.
+    ///
+    /// This value can be stale and sometimes needs to be resynchronized with `queue.head`.
+    cached_head: Cell<usize>,
 }
 
 /// Producer end of the queue. Implements the trait `Producer<T>`.
 pub struct SPSCProducer<T, B: Buffer<T>> {
     queue: Arc<SPSCQueue<T, B>>,
-    _not_sync: PhantomData<std::cell::Cell<()>>,
+    /// A copy of `queue.tail` for quick access.
+    ///
+    /// This value can be stale and sometimes needs to be resynchronized with `queue.tail`.
+    cached_tail: Cell<usize>,
 }
 
 /// Creates a new SPSC queue
@@ -62,11 +69,11 @@ pub fn spsc_queue<T, B: Buffer<T>>(buf: B) -> (SPSCProducer<T, B>, SPSCConsumer<
     (
         SPSCProducer {
             queue: queue.clone(),
-            _not_sync: PhantomData,
+            cached_tail: Cell::new(0),
         },
         SPSCConsumer {
             queue,
-            _not_sync: PhantomData,
+            cached_head: Cell::new(0),
         },
     )
 }
@@ -90,13 +97,17 @@ impl<T, B: Buffer<T>> Producer<T> for SPSCProducer<T, B> {
         let q = &self.queue;
         let head = q.head.load(Ordering::Relaxed);
 
-        loop {
-            if q.tail.load(Ordering::Acquire) + q.buf.size() > head {
-                break;
-            } else if Arc::strong_count(q) < 2 {
-                return Err(PushError::Disconnected(value));
+        if self.cached_tail.get() + q.buf.size() <= head {
+            loop {
+                let tail = q.tail.load(Ordering::Acquire);
+                if tail + q.buf.size() > head {
+                    self.cached_tail.set(tail);
+                    break;
+                } else if Arc::strong_count(q) < 2 {
+                    return Err(PushError::Disconnected(value));
+                }
+                spin_loop();
             }
-            spin_loop();
         }
 
         unsafe { buf_write(&q.buf, head, value) };
@@ -108,12 +119,16 @@ impl<T, B: Buffer<T>> Producer<T> for SPSCProducer<T, B> {
         let q = &self.queue;
         let head = q.head.load(Ordering::Relaxed);
 
-        if q.tail.load(Ordering::Acquire) + q.buf.size() <= head {
-            return if Arc::strong_count(q) < 2 {
-                Err(TryPushError::Disconnected(value))
-            } else {
-                Err(TryPushError::Full(value))
-            };
+        if self.cached_tail.get() + q.buf.size() <= head {
+            let tail = q.tail.load(Ordering::Acquire);
+            if tail + q.buf.size() <= head {
+                return if Arc::strong_count(q) < 2 {
+                    Err(TryPushError::Disconnected(value))
+                } else {
+                    Err(TryPushError::Full(value))
+                };
+            }
+            self.cached_tail.set(tail);
         }
 
         unsafe { buf_write(&q.buf, head, value) };
@@ -132,13 +147,17 @@ impl<T, B: Buffer<T>> Consumer<T> for SPSCConsumer<T, B> {
         let tail = q.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
 
-        loop {
-            if q.head.load(Ordering::Acquire) >= tail_plus_one {
-                break;
-            } else if Arc::strong_count(q) < 2 {
-                return Err(PopError::Disconnected);
+        if self.cached_head.get() < tail_plus_one {
+            loop {
+                let head = q.head.load(Ordering::Acquire);
+                if head >= tail_plus_one {
+                    self.cached_head.set(head);
+                    break;
+                } else if Arc::strong_count(q) < 2 {
+                    return Err(PopError::Disconnected);
+                }
+                spin_loop();
             }
-            spin_loop();
         }
 
         let v = unsafe { buf_read(&q.buf, tail) };
@@ -151,12 +170,16 @@ impl<T, B: Buffer<T>> Consumer<T> for SPSCConsumer<T, B> {
         let tail = q.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
 
-        if q.head.load(Ordering::Acquire) < tail_plus_one {
-            return if Arc::strong_count(q) < 2 {
-                Err(TryPopError::Disconnected)
-            } else {
-                Err(TryPopError::Empty)
-            };
+        if self.cached_head.get() < tail_plus_one {
+            let head = q.head.load(Ordering::Acquire);
+            if head < tail_plus_one {
+                return if Arc::strong_count(q) < 2 {
+                    Err(TryPopError::Disconnected)
+                } else {
+                    Err(TryPopError::Empty)
+                };
+            }
+            self.cached_head.set(head);
         }
 
         let v = unsafe { buf_read(&q.buf, tail) };

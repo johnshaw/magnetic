@@ -6,6 +6,7 @@
 //! `SPMCProducer` is `Send` and `!Sync` while `SPMCConsumer` is `Send` and
 //! `Sync`.
 
+use std::cell::Cell;
 use std::hint::spin_loop;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -43,7 +44,10 @@ impl<T, B: Buffer<T>> Clone for SPMCConsumer<T, B> {
 /// Producer end of the queue. Implements the trait `Producer<T>`.
 pub struct SPMCProducer<T, B: Buffer<T>> {
     queue: Arc<SPMCQueue<T, B>>,
-    _not_sync: PhantomData<std::cell::Cell<()>>,
+    /// A copy of `queue.tail` for quick access.
+    ///
+    /// This value can be stale and sometimes needs to be resynchronized with `queue.tail`.
+    cached_tail: Cell<usize>,
 }
 
 /// Creates a new SPMC queue
@@ -74,7 +78,7 @@ pub fn spmc_queue<T, B: Buffer<T>>(buf: B) -> (SPMCProducer<T, B>, SPMCConsumer<
     (
         SPMCProducer {
             queue: queue.clone(),
-            _not_sync: PhantomData,
+            cached_tail: Cell::new(0),
         },
         SPMCConsumer { queue },
     )
@@ -99,13 +103,17 @@ impl<T, B: Buffer<T>> Producer<T> for SPMCProducer<T, B> {
         let q = &self.queue;
         let head = q.head.load(Ordering::Relaxed);
 
-        loop {
-            if q.tail.curr.load(Ordering::Acquire) + q.buf.size() > head {
-                break;
-            } else if Arc::strong_count(q) < 2 {
-                return Err(PushError::Disconnected(value));
+        if self.cached_tail.get() + q.buf.size() <= head {
+            loop {
+                let tail = q.tail.curr.load(Ordering::Acquire);
+                if tail + q.buf.size() > head {
+                    self.cached_tail.set(tail);
+                    break;
+                } else if Arc::strong_count(q) < 2 {
+                    return Err(PushError::Disconnected(value));
+                }
+                spin_loop();
             }
-            spin_loop();
         }
 
         unsafe { buf_write(&q.buf, head, value) };
@@ -117,12 +125,16 @@ impl<T, B: Buffer<T>> Producer<T> for SPMCProducer<T, B> {
         let q = &self.queue;
         let head = q.head.load(Ordering::Relaxed);
 
-        if q.tail.curr.load(Ordering::Acquire) + q.buf.size() <= head {
-            return if Arc::strong_count(q) < 2 {
-                Err(TryPushError::Disconnected(value))
-            } else {
-                Err(TryPushError::Full(value))
-            };
+        if self.cached_tail.get() + q.buf.size() <= head {
+            let tail = q.tail.curr.load(Ordering::Acquire);
+            if tail + q.buf.size() <= head {
+                return if Arc::strong_count(q) < 2 {
+                    Err(TryPushError::Disconnected(value))
+                } else {
+                    Err(TryPushError::Full(value))
+                };
+            }
+            self.cached_tail.set(tail);
         }
 
         unsafe { buf_write(&q.buf, head, value) };

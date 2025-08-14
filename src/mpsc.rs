@@ -6,6 +6,7 @@
 //! the `MPSCProducer` is `Send` and `Sync` while the `MPSCConsumer` is `Send`
 //! and `!Sync`.
 
+use std::cell::Cell;
 use std::hint::spin_loop;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -28,7 +29,10 @@ struct MPSCQueue<T, B: Buffer<T>> {
 /// Consumer end of the queue. Implements the trait `Consumer<T>`.
 pub struct MPSCConsumer<T, B: Buffer<T>> {
     queue: Arc<MPSCQueue<T, B>>,
-    _not_sync: PhantomData<std::cell::Cell<()>>,
+    /// A copy of `queue.head` for quick access.
+    ///
+    /// This value can be stale and sometimes needs to be resynchronized with `queue.head`.
+    cached_head: Cell<usize>,
 }
 
 /// Producer end of the queue. Implements the trait `Producer<T>`.
@@ -77,7 +81,7 @@ pub fn mpsc_queue<T, B: Buffer<T>>(buf: B) -> (MPSCProducer<T, B>, MPSCConsumer<
         },
         MPSCConsumer {
             queue,
-            _not_sync: PhantomData,
+            cached_head: Cell::new(0),
         },
     )
 }
@@ -156,13 +160,17 @@ impl<T, B: Buffer<T>> Consumer<T> for MPSCConsumer<T, B> {
         let tail = q.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
 
-        loop {
-            if q.head.curr.load(Ordering::Acquire) >= tail_plus_one {
-                break;
-            } else if Arc::strong_count(q) < 2 {
-                return Err(PopError::Disconnected);
+        if self.cached_head.get() < tail_plus_one {
+            loop {
+                let head = q.head.curr.load(Ordering::Acquire);
+                if head >= tail_plus_one {
+                    self.cached_head.set(head);
+                    break;
+                } else if Arc::strong_count(q) < 2 {
+                    return Err(PopError::Disconnected);
+                }
+                spin_loop();
             }
-            spin_loop();
         }
 
         let v = unsafe { buf_read(&q.buf, tail) };
@@ -175,12 +183,16 @@ impl<T, B: Buffer<T>> Consumer<T> for MPSCConsumer<T, B> {
         let tail = q.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
 
-        if q.head.curr.load(Ordering::Acquire) < tail_plus_one {
-            return if Arc::strong_count(q) < 2 {
-                Err(TryPopError::Disconnected)
-            } else {
-                Err(TryPopError::Empty)
-            };
+        if self.cached_head.get() < tail_plus_one {
+            let head = q.head.curr.load(Ordering::Acquire);
+            if head < tail_plus_one {
+                return if Arc::strong_count(q) < 2 {
+                    Err(TryPopError::Disconnected)
+                } else {
+                    Err(TryPopError::Empty)
+                };
+            }
+            self.cached_head.set(head);
         }
 
         let v = unsafe { buf_read(&q.buf, tail) };
