@@ -25,6 +25,8 @@ struct MPSCQueue<T, B: Buffer<T>> {
     _marker: PhantomData<T>,
 }
 
+unsafe impl<T: Send, B: Buffer<T>> Sync for MPSCQueue<T, B> {}
+
 /// Consumer end of the queue. Implements the trait `Consumer<T>`.
 pub struct MPSCConsumer<T, B: Buffer<T>> {
     queue: Arc<MPSCQueue<T, B>>,
