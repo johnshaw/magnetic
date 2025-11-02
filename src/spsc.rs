@@ -23,6 +23,8 @@ struct SPSCQueue<T, B: Buffer<T>> {
     _marker: PhantomData<T>,
 }
 
+unsafe impl<T: Send, B: Buffer<T>> Sync for SPSCQueue<T, B> {}
+
 /// Consumer end of the queue. Implements the trait `Consumer<T>`.
 pub struct SPSCConsumer<T, B: Buffer<T>> {
     queue: Arc<SPSCQueue<T, B>>,
@@ -247,5 +249,20 @@ mod test {
         std::mem::drop(c);
         assert_eq!(p.push(2), Err(PushError::Disconnected(2)));
         assert_eq!(p.try_push(2), Err(TryPushError::Disconnected(2)));
+    }
+
+    #[test]
+    fn producer_and_consumer_implement_send() {
+        let (p, c) = spsc_queue(DynamicBuffer::new(1).unwrap());
+        let (p2, c2) = spsc_queue(DynamicBuffer::new(1).unwrap());
+
+        let handle = std::thread::spawn(move || {
+            p.push(p2).unwrap();
+            let p2 = c.pop().unwrap();
+            p2.push(1).unwrap();
+        });
+
+        handle.join().unwrap();
+        assert_eq!(c2.pop(), Ok(1));
     }
 }
