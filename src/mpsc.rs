@@ -6,6 +6,7 @@
 //! the `MPSCProducer` is `Send` and `Sync` while the `MPSCConsumer` is `Send`
 //! and `!Sync`.
 
+use std::cell::Cell;
 use std::hint::spin_loop;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -30,7 +31,10 @@ unsafe impl<T: Send, B: Buffer<T>> Sync for MPSCQueue<T, B> {}
 /// Consumer end of the queue. Implements the trait `Consumer<T>`.
 pub struct MPSCConsumer<T, B: Buffer<T>> {
     queue: Arc<MPSCQueue<T, B>>,
-    _not_sync: PhantomData<std::cell::Cell<()>>
+    /// A copy of `queue.head` for quick access.
+    ///
+    /// This value can be stale and sometimes needs to be resynchronized with `queue.head`.
+    cached_head: Cell<usize>,
 }
 
 /// Producer end of the queue. Implements the trait `Producer<T>`.
@@ -77,7 +81,10 @@ pub fn mpsc_queue<T, B: Buffer<T>>(buf: B) -> (MPSCProducer<T, B>, MPSCConsumer<
         MPSCProducer {
             queue: queue.clone(),
         },
-        MPSCConsumer { queue, _not_sync: PhantomData },
+        MPSCConsumer {
+            queue,
+            cached_head: Cell::new(0),
+        },
     )
 }
 
@@ -92,21 +99,24 @@ impl<T, B: Buffer<T>> Drop for MPSCQueue<T, B> {
 }
 
 impl<T, B: Buffer<T>> Producer<T> for MPSCProducer<T, B> {
+    fn is_closed(&self) -> bool {
+        !self.queue.consumer.load(Ordering::Relaxed)
+    }
+
     fn push(&self, value: T) -> Result<(), PushError<T>> {
         let q = &self.queue;
-
         let head = q.head.next.fetch_add(1, Ordering::Relaxed);
+
         loop {
-            if !q.consumer.load(Ordering::Acquire) {
-                return Err(PushError::Disconnected(value));
-            } else if q.tail.load(Ordering::Acquire) + q.buf.size() > head {
+            if q.tail.load(Ordering::Acquire) + q.buf.size() > head {
                 break;
+            } else if !q.consumer.load(Ordering::Relaxed) {
+                return Err(PushError::Disconnected(value));
             }
             spin_loop();
         }
 
         unsafe { buf_write(&q.buf, head, value) };
-
         while q.head.curr.load(Ordering::Relaxed) < head {
             spin_loop();
         }
@@ -118,43 +128,54 @@ impl<T, B: Buffer<T>> Producer<T> for MPSCProducer<T, B> {
         let q = &self.queue;
         loop {
             let head = q.head.curr.load(Ordering::Relaxed);
-            if !q.consumer.load(Ordering::Acquire) {
-                return Err(TryPushError::Disconnected(value));
-            } else if q.tail.load(Ordering::Acquire) + q.buf.size() <= head {
-                return Err(TryPushError::Full(value));
-            } else {
-                let next = head + 1;
-                if q.head
-                    .next
-                    .compare_exchange_weak(head, next, Ordering::Acquire, Ordering::Acquire)
-                    .is_ok()
-                {
-                    unsafe { buf_write(&q.buf, head, value) };
-                    q.head.curr.store(next, Ordering::Release);
-                    return Ok(());
-                }
+            let head_plus_one = head + 1;
+
+            if q.tail.load(Ordering::Acquire) + q.buf.size() <= head {
+                // buffer is full, check whether it's closed.
+                // relaxed is fine since Consumer.drop does an acquire/release on .tail
+                return if !q.consumer.load(Ordering::Relaxed) {
+                    Err(TryPushError::Disconnected(value))
+                } else {
+                    Err(TryPushError::Full(value))
+                };
+            } else if q
+                .head
+                .next
+                .compare_exchange_weak(head, head_plus_one, Ordering::Acquire, Ordering::Acquire)
+                .is_ok()
+            {
+                unsafe { buf_write(&q.buf, head, value) };
+                q.head.curr.store(head_plus_one, Ordering::Release);
+                return Ok(());
             }
         }
     }
 }
 
 impl<T, B: Buffer<T>> Consumer<T> for MPSCConsumer<T, B> {
+    fn is_closed(&self) -> bool {
+        Arc::strong_count(&self.queue) < 2
+    }
+
     fn pop(&self) -> Result<T, PopError> {
         let q = &self.queue;
-
         let tail = q.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
-        loop {
-            if tail_plus_one <= q.head.curr.load(Ordering::Acquire) {
-                break;
-            } else if Arc::strong_count(&self.queue) < 2 {
-                return Err(PopError::Disconnected);
+
+        if self.cached_head.get() < tail_plus_one {
+            loop {
+                let head = q.head.curr.load(Ordering::Acquire);
+                if head >= tail_plus_one {
+                    self.cached_head.set(head);
+                    break;
+                } else if Arc::strong_count(q) < 2 {
+                    return Err(PopError::Disconnected);
+                }
+                spin_loop();
             }
-            spin_loop();
         }
 
         let v = unsafe { buf_read(&q.buf, tail) };
-
         q.tail.store(tail_plus_one, Ordering::Release);
         Ok(v)
     }
@@ -164,23 +185,29 @@ impl<T, B: Buffer<T>> Consumer<T> for MPSCConsumer<T, B> {
         let tail = q.tail.load(Ordering::Relaxed);
         let tail_plus_one = tail + 1;
 
-        if tail_plus_one > q.head.curr.load(Ordering::Acquire) {
-            if Arc::strong_count(&self.queue) > 1 {
-                Err(TryPopError::Empty)
-            } else {
-                Err(TryPopError::Disconnected)
+        if self.cached_head.get() < tail_plus_one {
+            let head = q.head.curr.load(Ordering::Acquire);
+            if head < tail_plus_one {
+                return if Arc::strong_count(q) < 2 {
+                    Err(TryPopError::Disconnected)
+                } else {
+                    Err(TryPopError::Empty)
+                };
             }
-        } else {
-            let v = unsafe { buf_read(&q.buf, tail) };
-            q.tail.store(tail_plus_one, Ordering::Release);
-            Ok(v)
+            self.cached_head.set(head);
         }
+
+        let v = unsafe { buf_read(&q.buf, tail) };
+        q.tail.store(tail_plus_one, Ordering::Release);
+        Ok(v)
     }
 }
 
 impl<T, B: Buffer<T>> Drop for MPSCConsumer<T, B> {
     fn drop(&mut self) {
-        self.queue.consumer.store(false, Ordering::Release);
+        self.queue.consumer.store(false, Ordering::Relaxed);
+        // Acquire/Release .tail to ensure other threads see new .closed
+        self.queue.tail.fetch_add(0, Ordering::AcqRel);
     }
 }
 
@@ -278,9 +305,11 @@ mod test {
         assert_eq!(c.pop(), Err(PopError::Disconnected));
         assert_eq!(c.try_pop(), Err(TryPopError::Disconnected));
 
-        let (p, c) = mpsc_queue(DynamicBuffer::new(32).unwrap());
+        let (p, c) = mpsc_queue(DynamicBuffer::new(2).unwrap());
         p.push(1).unwrap();
         std::mem::drop(c);
+        assert!(p.is_closed());
+        p.push(1).unwrap();
         assert_eq!(p.push(2), Err(PushError::Disconnected(2)));
         assert_eq!(p.try_push(2), Err(TryPushError::Disconnected(2)));
 

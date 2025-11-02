@@ -34,7 +34,7 @@ impl<T, B: Buffer<T>> Buffer<T> for Box<B> {
         (**self).size()
     }
 
-    fn at(&self, idx: usize) -> * const UnsafeCell<MaybeUninit<T>> {
+    fn at(&self, idx: usize) -> *const UnsafeCell<MaybeUninit<T>> {
         (**self).at(idx)
     }
 }

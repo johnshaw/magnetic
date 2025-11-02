@@ -30,7 +30,7 @@ impl<T, const CAP: usize> Buffer<T> for ArrayBuffer<T, CAP> {
 
     #[inline(always)]
     fn at(&self, idx: usize) -> *const UnsafeCell<MaybeUninit<T>> {
-        &self.0[idx % CAP] as * const _
+        &self.0[idx % CAP] as *const _
     }
 }
 

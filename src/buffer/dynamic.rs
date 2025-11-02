@@ -6,7 +6,7 @@ use super::Buffer;
 
 /// Holds data allocated from the heap at run time
 pub struct DynamicBuffer<T> {
-    items: Box<[UnsafeCell<MaybeUninit<T>>]>
+    items: Box<[UnsafeCell<MaybeUninit<T>>]>,
 }
 
 impl<T> DynamicBuffer<T> {
@@ -18,7 +18,7 @@ impl<T> DynamicBuffer<T> {
             let mut vec = Vec::with_capacity(size);
             unsafe { vec.set_len(size) };
             Ok(DynamicBuffer {
-                items: vec.into_boxed_slice()
+                items: vec.into_boxed_slice(),
             })
         } else {
             Err("Buffer size must be greater than 0")
@@ -46,7 +46,7 @@ impl<T> Buffer<T> for DynamicBuffer<T> {
 /// faster runtime performance due to the use of a mask instead of modulus
 /// when computing buffer indexes.
 pub struct DynamicBufferP2<T> {
-    items: Box<[UnsafeCell<MaybeUninit<T>>]>
+    items: Box<[UnsafeCell<MaybeUninit<T>>]>,
 }
 
 impl<T> DynamicBufferP2<T> {
@@ -61,7 +61,7 @@ impl<T> DynamicBufferP2<T> {
                     let mut vec = Vec::with_capacity(size);
                     unsafe { vec.set_len(size) };
                     vec.into_boxed_slice()
-                }
+                },
             }),
             _ => Err("Buffer size must be a power of two"),
         }

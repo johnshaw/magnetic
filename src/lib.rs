@@ -142,20 +142,30 @@ impl std::error::Error for TryPopError {}
 /// The consumer end of the queue allows for sending data. `Producer<T>` is
 /// always `Send`, but is only `Sync` for multi-producer (MPSC, MPMC) queues.
 pub trait Producer<T> {
+    /// Check if this channel is closed.
+    fn is_closed(&self) -> bool;
+
     /// Add value to front of the queue. This method will block if the queue
     /// is currently full.
+    /// If the channel is closed, this function will continue succeeding until
+    /// the queue becomes full.
     fn push(&self, value: T) -> Result<(), PushError<T>>;
 
     /// Attempt to add a value to the front of the queue. If the value was
     /// added successfully, `None` will be returned. If unsuccessful, `value`
     /// will be returned. An unsuccessful push indicates that the queue was
     /// full.
+    /// If the channel is closed, this function will continue succeeding until
+    /// the queue becomes full.
     fn try_push(&self, value: T) -> Result<(), TryPushError<T>>;
 }
 
 /// The consumer end of the queue allows for receiving data. `Consumer<T>` is
 /// always `Send`, but is only `Sync` for multi-consumer (SPMC, MPMC) queues.
 pub trait Consumer<T> {
+    /// Check if this channel is closed.
+    fn is_closed(&self) -> bool;
+
     /// Remove value from the end of the queue. This method will block if the
     /// queue is currently empty.
     fn pop(&self) -> Result<T, PopError>;

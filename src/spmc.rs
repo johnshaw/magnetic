@@ -6,6 +6,7 @@
 //! `SPMCProducer` is `Send` and `!Sync` while `SPMCConsumer` is `Send` and
 //! `Sync`.
 
+use std::cell::Cell;
 use std::hint::spin_loop;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -45,7 +46,10 @@ impl<T, B: Buffer<T>> Clone for SPMCConsumer<T, B> {
 /// Producer end of the queue. Implements the trait `Producer<T>`.
 pub struct SPMCProducer<T, B: Buffer<T>> {
     queue: Arc<SPMCQueue<T, B>>,
-    _not_sync: PhantomData<std::cell::Cell<()>>
+    /// A copy of `queue.tail` for quick access.
+    ///
+    /// This value can be stale and sometimes needs to be resynchronized with `queue.tail`.
+    cached_tail: Cell<usize>,
 }
 
 /// Creates a new SPMC queue
@@ -76,7 +80,7 @@ pub fn spmc_queue<T, B: Buffer<T>>(buf: B) -> (SPMCProducer<T, B>, SPMCConsumer<
     (
         SPMCProducer {
             queue: queue.clone(),
-            _not_sync: PhantomData,
+            cached_tail: Cell::new(0),
         },
         SPMCConsumer { queue },
     )
@@ -93,17 +97,25 @@ impl<T, B: Buffer<T>> Drop for SPMCQueue<T, B> {
 }
 
 impl<T, B: Buffer<T>> Producer<T> for SPMCProducer<T, B> {
+    fn is_closed(&self) -> bool {
+        Arc::strong_count(&self.queue) < 2
+    }
+
     fn push(&self, value: T) -> Result<(), PushError<T>> {
         let q = &self.queue;
         let head = q.head.load(Ordering::Relaxed);
 
-        loop {
-            if Arc::strong_count(&self.queue) < 2 {
-                return Err(PushError::Disconnected(value));
-            } else if q.tail.curr.load(Ordering::Acquire) + q.buf.size() > head {
-                break;
+        if self.cached_tail.get() + q.buf.size() <= head {
+            loop {
+                let tail = q.tail.curr.load(Ordering::Acquire);
+                if tail + q.buf.size() > head {
+                    self.cached_tail.set(tail);
+                    break;
+                } else if Arc::strong_count(q) < 2 {
+                    return Err(PushError::Disconnected(value));
+                }
+                spin_loop();
             }
-            spin_loop();
         }
 
         unsafe { buf_write(&q.buf, head, value) };
@@ -114,35 +126,45 @@ impl<T, B: Buffer<T>> Producer<T> for SPMCProducer<T, B> {
     fn try_push(&self, value: T) -> Result<(), TryPushError<T>> {
         let q = &self.queue;
         let head = q.head.load(Ordering::Relaxed);
-        if Arc::strong_count(&self.queue) < 2 {
-            Err(TryPushError::Disconnected(value))
-        } else if q.tail.curr.load(Ordering::Acquire) + q.buf.size() <= head {
-            Err(TryPushError::Full(value))
-        } else {
-            unsafe { buf_write(&q.buf, head, value) };
-            q.head.store(head + 1, Ordering::Release);
-            Ok(())
+
+        if self.cached_tail.get() + q.buf.size() <= head {
+            let tail = q.tail.curr.load(Ordering::Acquire);
+            if tail + q.buf.size() <= head {
+                return if Arc::strong_count(q) < 2 {
+                    Err(TryPushError::Disconnected(value))
+                } else {
+                    Err(TryPushError::Full(value))
+                };
+            }
+            self.cached_tail.set(tail);
         }
+
+        unsafe { buf_write(&q.buf, head, value) };
+        q.head.store(head + 1, Ordering::Release);
+        Ok(())
     }
 }
 
 impl<T, B: Buffer<T>> Consumer<T> for SPMCConsumer<T, B> {
+    fn is_closed(&self) -> bool {
+        !self.queue.producer.load(Ordering::Relaxed)
+    }
+
     fn pop(&self) -> Result<T, PopError> {
         let q = &self.queue;
-
         let tail = q.tail.next.fetch_add(1, Ordering::Relaxed);
         let tail_plus_one = tail + 1;
+
         loop {
-            if tail_plus_one <= q.head.load(Ordering::Acquire) {
+            if q.head.load(Ordering::Acquire) >= tail_plus_one {
                 break;
-            } else if !q.producer.load(Ordering::Acquire) {
+            } else if !q.producer.load(Ordering::Relaxed) {
                 return Err(PopError::Disconnected);
             }
             spin_loop();
         }
 
         let v = unsafe { buf_read(&q.buf, tail) };
-
         while q.tail.curr.load(Ordering::Relaxed) < tail {
             spin_loop();
         }
@@ -155,12 +177,15 @@ impl<T, B: Buffer<T>> Consumer<T> for SPMCConsumer<T, B> {
         loop {
             let tail = q.tail.curr.load(Ordering::Relaxed);
             let tail_plus_one = tail + 1;
-            if tail_plus_one > q.head.load(Ordering::Acquire) {
-                if q.producer.load(Ordering::Acquire) {
-                    return Err(TryPopError::Empty);
+
+            if q.head.load(Ordering::Acquire) < tail_plus_one {
+                // buffer is empty, check whether it's closed.
+                // relaxed is fine since Producer.drop does an acquire/release on .head
+                return if !q.producer.load(Ordering::Relaxed) {
+                    Err(TryPopError::Disconnected)
                 } else {
-                    return Err(TryPopError::Disconnected);
-                }
+                    Err(TryPopError::Empty)
+                };
             } else if q
                 .tail
                 .next
@@ -177,7 +202,9 @@ impl<T, B: Buffer<T>> Consumer<T> for SPMCConsumer<T, B> {
 
 impl<T, B: Buffer<T>> Drop for SPMCProducer<T, B> {
     fn drop(&mut self) {
-        self.queue.producer.store(false, Ordering::Release);
+        self.queue.producer.store(false, Ordering::Relaxed);
+        // Acquire/Release .head to ensure other threads see new .closed
+        self.queue.head.fetch_add(0, Ordering::AcqRel);
     }
 }
 
@@ -274,9 +301,11 @@ mod test {
         assert_eq!(c.pop(), Err(PopError::Disconnected));
         assert_eq!(c.try_pop(), Err(TryPopError::Disconnected));
 
-        let (p, c) = spmc_queue(DynamicBuffer::new(32).unwrap());
+        let (p, c) = spmc_queue(DynamicBuffer::new(2).unwrap());
         p.push(1).unwrap();
         std::mem::drop(c);
+        assert!(p.is_closed());
+        p.push(1).unwrap();
         assert_eq!(p.push(2), Err(PushError::Disconnected(2)));
         assert_eq!(p.try_push(2), Err(TryPushError::Disconnected(2)));
 
